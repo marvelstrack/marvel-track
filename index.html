@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCU Tracker</title>
+<style>
+  :root {
+    --bg: #0a0a0d;
+    --card: #17171c;
+    --card-hover: #1e1e25;
+    --border: #2a2a32;
+    --text: #f0f0f0;
+    --text-dim: #9a9aa2;
+    --accent: #e62429;
+    --accent-dim: #7a1316;
+    --done: #2ecc71;
+    --done-dim: #1b6b3d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(230,36,41,0.08), transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(52,152,219,0.06), transparent 40%),
+      var(--bg);
+    color: var(--text);
+    padding: 24px 16px 80px;
+  }
+  header {
+    max-width: 1000px;
+    margin: 0 auto 24px;
+    text-align: center;
+  }
+  header h1 {
+    font-size: 2.2rem;
+    letter-spacing: 2px;
+    background: linear-gradient(90deg, #e62429, #ff8a5c);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 800;
+  }
+  header p {
+    color: var(--text-dim);
+    margin-top: 6px;
+    font-size: 0.95rem;
+  }
+
+  .progress-wrap {
+    max-width: 1000px;
+    margin: 0 auto 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 22px;
+  }
+  .progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .progress-top .stat { font-size: 0.9rem; color: var(--text-dim); }
+  .progress-top .stat b { color: var(--text); }
+  .bar-bg {
+    background: #26262e;
+    border-radius: 20px;
+    height: 12px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #e62429, #ff5a5f);
+    width: 0%;
+    transition: width 0.5s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 0 12px rgba(230,36,41,0.5);
+  }
+
+  /* Stats per fase */
+  .phase-stats {
+    max-width: 1000px;
+    margin: 0 auto 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .phase-stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .phase-stat-card:hover { transform: translateY(-2px); border-color: #3a3a44; }
+  .phase-stat-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .phase-stat-top span.icon { font-size: 1rem; }
+  .phase-mini-bar-bg {
+    background: #26262e;
+    border-radius: 20px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .phase-mini-bar-fill {
+    height: 100%;
+    border-radius: 20px;
+    transition: width 0.5s ease;
+  }
+
+  .controls {
+    max-width: 1000px;
+    margin: 0 auto 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .filters button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 7px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: 0.2s;
+  }
+  .filters button:hover { border-color: var(--accent); color: var(--text); transform: translateY(-1px); }
+  .filters button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .search {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    min-width: 180px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search:focus { border-color: var(--accent); }
+  select.search {
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%), linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+    background-position: calc(100% - 16px) center, calc(100% - 11px) center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 30px;
+  }
+  select.search option { background: var(--card); color: var(--text); }
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    padding: 7px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: 0.2s;
+  }
+  .reset-btn:hover { background: var(--accent-dim); color: white; }
+
+  main { max-width: 1000px; margin: 0 auto; }
+  .phase-block { margin-bottom: 32px; }
+  .phase-title {
+    font-size: 1.15rem;
+    color: var(--text);
+    border-left: 3px solid var(--accent);
+    padding-left: 10px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .phase-title .icon { font-size: 1.2rem; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+  }
+
+  .item {
+    position: relative;
+    border-radius: 12px;
+    cursor: pointer;
+    overflow: hidden;
+    aspect-ratio: 2 / 3;
+    border: 1px solid var(--border);
+    transition: transform 0.25s cubic-bezier(.4,0,.2,1), box-shadow 0.25s ease, border-color 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .item:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.4);
+    border-color: #4a4a55;
+  }
+  .item.checked {
+    border-color: var(--done);
+    box-shadow: 0 0 0 1px var(--done), 0 8px 20px rgba(46,204,113,0.15);
+  }
+
+  .poster-bg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6rem;
+    opacity: 0.9;
+    transition: filter 0.25s ease, opacity 0.25s ease;
+  }
+  .item.checked .poster-bg { filter: grayscale(0.6) brightness(0.6); opacity: 0.5; }
+
+  .poster-overlay {
+    position: relative;
+    z-index: 2;
+    background: linear-gradient(to top, rgba(0,0,0,0.92) 10%, rgba(0,0,0,0.5) 60%, transparent 100%);
+    padding: 22px 10px 10px;
+  }
+  .item-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: #fff;
+  }
+  .item.checked .item-title { color: #cfcfd4; text-decoration: line-through; }
+  .item-meta {
+    margin-top: 5px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .tag {
+    padding: 1px 7px;
+    border-radius: 8px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .tag.movie { background: rgba(230,36,41,0.25); color: #ff8a8d; }
+  .tag.series { background: rgba(52,152,219,0.25); color: #7ec3ee; }
+
+  .check-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 3;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    border: 2px solid rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(.4,0,.2,1);
+  }
+  .item.checked .check-badge {
+    background: var(--done);
+    border-color: var(--done);
+    transform: scale(1.1);
+  }
+  .check-badge svg {
+    width: 14px; height: 14px;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.2s ease;
+  }
+  .item.checked .check-badge svg { opacity: 1; transform: scale(1); }
+
+  .hidden { display: none !important; }
+
+  footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    margin-top: 40px;
+  }
+
+  @media (max-width: 480px) {
+    .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .poster-bg { font-size: 2rem; }
+  }
+
+  /* Topbar: guida */
+  .topbar {
+    max-width: 1000px;
+    margin: 0 auto 6px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .topbar button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: 0.2s;
+  }
+  .topbar button:hover { border-color: var(--accent); color: var(--text); }
+  .topbar-link {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    text-decoration: none;
+    transition: 0.2s;
+  }
+  .topbar-link:hover { border-color: var(--accent); color: var(--text); }
+
+  .side-cards {
+    max-width: 1000px;
+    margin: 0 auto 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+  }
+  .side-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    text-decoration: none;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .side-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .side-card-icon { font-size: 1.6rem; flex-shrink: 0; }
+  .side-card-title { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+  .side-card-sub { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+
+  /* Info button sulle card */
+  .info-btn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 3;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .info-btn:hover { background: rgba(0,0,0,0.7); border-color: var(--accent); }
+
+  /* Modale (guida e descrizioni) */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(3px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 26px 26px 22px;
+    position: relative;
+  }
+  .modal-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1.2rem;
+    cursor: pointer;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-box h2 {
+    font-size: 1.3rem;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+  .modal-box .modal-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  .guide-step {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+  .guide-step .g-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+  }
+  .guide-step .g-title {
+    font-weight: 600;
+    font-size: 0.92rem;
+    margin-bottom: 2px;
+  }
+  .guide-step .g-text {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+  .desc-poster {
+    width: 100%;
+    max-width: 180px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    display: block;
+  }
+  .desc-tag {
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .desc-text {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #d8d8dc;
+  }
+
+  /* Statistiche extra */
+  .extra-stats {
+    max-width: 1000px;
+    margin: 0 auto 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .extra-stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .extra-stat-card .value { font-size: 1.3rem; font-weight: 700; }
+  .extra-stat-card .label { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+
+  /* Consigliato per te */
+  .reco-card {
+    max-width: 1000px;
+    margin: 0 auto 24px;
+    background: linear-gradient(120deg, rgba(230,36,41,0.12), rgba(20,20,25,0.4));
+    border: 1px solid var(--accent-dim);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: none;
+    gap: 14px;
+    align-items: center;
+  }
+  .reco-card.show { display: flex; }
+  .reco-icon { font-size: 2rem; }
+  .reco-text .reco-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .reco-text .reco-title { font-size: 1.05rem; font-weight: 600; margin-top: 2px; }
+  .reco-text .reco-sub { font-size: 0.8rem; color: var(--text-dim); margin-top: 3px; }
+
+  /* Recensioni: stelle */
+  .stars {
+    display: flex;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .star {
+    font-size: 0.85rem;
+    color: #4a4a55;
+    cursor: pointer;
+    transition: color 0.15s, transform 0.15s;
+  }
+  .star:hover { transform: scale(1.2); }
+  .star.filled { color: #ffc94d; }
+  .note-btn {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    margin-left: 4px;
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button id="guideBtn">❓ Guida</button>
+</div>
+
+<header>
+  <h1>MCU TRACKER</h1>
+  <p>Segna tutto ciò che hai già visto nel Marvel Cinematic Universe</p>
+</header>
+
+<div class="side-cards">
+  <a href="https://forms.gle/HyBUxgCPWtuxpdqj9" target="_blank" rel="noopener" class="side-card">
+    <div class="side-card-icon">💡</div>
+    <div class="side-card-text">
+      <div class="side-card-title">Hai un consiglio per migliorare il sito?</div>
+      <div class="side-card-sub">Scrivilo qui, arriva direttamente a chi lo ha creato →</div>
+    </div>
+  </a>
+  <a href="https://ko-fi.com/marvel87569" target="_blank" rel="noopener" class="side-card">
+    <div class="side-card-icon">☕</div>
+    <div class="side-card-text">
+      <div class="side-card-title">Ti piace il sito?</div>
+      <div class="side-card-sub">Supporta il creatore con una donazione su Ko-fi →</div>
+    </div>
+  </a>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-top">
+    <span class="stat">Completati: <b id="doneCount">0</b> / <span id="totalCount">0</span></span>
+    <span class="stat" id="percentText">0%</span>
+  </div>
+  <div class="bar-bg"><div class="bar-fill" id="barFill"></div></div>
+</div>
+
+<div class="extra-stats" id="extraStats"></div>
+
+<div class="reco-card" id="recoCard">
+  <div class="reco-icon" id="recoIcon">🎬</div>
+  <div class="reco-text">
+    <div class="reco-label">Consigliato per te</div>
+    <div class="reco-title" id="recoTitle"></div>
+    <div class="reco-sub" id="recoSub"></div>
+  </div>
+</div>
+
+<div class="phase-stats" id="phaseStats"></div>
+
+<div class="controls">
+  <div class="filters" id="orderToggle">
+    <button data-order="release" class="active">📅 Ordine di uscita</button>
+    <button data-order="chrono">🕰️ Ordine cronologico</button>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="filters" id="sagaToggle">
+    <button data-saga="all" class="active">Tutte le saghe</button>
+    <button data-saga="Infinity Saga">🔶 Infinity Saga</button>
+    <button data-saga="Multiverse Saga">🌀 Multiverse Saga</button>
+    <button data-saga="Fuori MCU">🌐 Fuori MCU</button>
+  </div>
+  <select class="search" id="franchiseSelect">
+    <option value="all">Tutti i personaggi</option>
+  </select>
+</div>
+
+<div class="controls">
+  <div class="filters">
+    <button data-filter="all" class="active">Tutti</button>
+    <button data-filter="movie">Film</button>
+    <button data-filter="series">Serie TV</button>
+    <button data-filter="unwatched">Da vedere</button>
+  </div>
+  <input type="text" class="search" id="searchBox" placeholder="Cerca titolo...">
+  <button class="reset-btn" id="resetBtn">Azzera progressi</button>
+</div>
+
+<main id="mainList"></main>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<footer>I dati vengono salvati automaticamente nel tuo browser (local storage).</footer>
+
+<script>
+const phaseMeta = {
+  "Fase 1": { icon: "🛡️", color: "#e67e22" },
+  "Fase 2": { icon: "⚡", color: "#3498db" },
+  "Fase 3": { icon: "💎", color: "#9b59b6" },
+  "Fase 4": { icon: "🌀", color: "#1abc9c" },
+  "Fase 5": { icon: "🕸️", color: "#e74c3c" },
+  "Fase 6": { icon: "🌌", color: "#2ecc71" },
+  "Universo Sony (Tobey Maguire)": { icon: "🕸️", color: "#c0392b" },
+  "Universo Sony (Andrew Garfield)": { icon: "🕷️", color: "#2980b9" },
+  "Universo Fox (X-Men & Deadpool)": { icon: "🧬", color: "#f39c12" },
+  "Marvel Netflix": { icon: "💀", color: "#5d4037" }
+};
+
+const data = [
+  { phase: "Fase 1", title: "Iron Man", type: "movie", icon: "🦾", poster: "img/Iron Man_.jpg" },
+  { phase: "Fase 1", title: "L'incredibile Hulk", type: "movie", icon: "💚", poster: "img/The Incredible Hulk (2008).jpg" },
+  { phase: "Fase 1", title: "Iron Man 2", type: "movie", icon: "🦾", poster: "img/44684221302810475.jpg" },
+  { phase: "Fase 1", title: "Thor", type: "movie", icon: "🔨", poster: "img/Thor (2011).jpg" },
+  { phase: "Fase 1", title: "Captain America - Il primo Vendicatore", type: "movie", icon: "🛡️", poster: "img/Captain America_ The First Avenger.jpg" },
+  { phase: "Fase 1", title: "The Avengers", type: "movie", icon: "🌟", poster: "img/trasferimento (10).jpg" },
+
+  { phase: "Fase 2", title: "Iron Man 3", type: "movie", icon: "🦾", poster: "img/ironman3.jpg" },
+  { phase: "Fase 2", title: "Thor: The Dark World", type: "movie", icon: "🔨", poster: "img/trasferimento (11).jpg" },
+  { phase: "Fase 2", title: "Captain America: Winter Soldier", type: "movie", icon: "🛡️", poster: "img/Captain America - The Winter Soldier.jpg" },
+  { phase: "Fase 2", title: "Guardiani della Galassia", type: "movie", icon: "🚀", poster: "img/Luxury Guardians Of the Galaxy 1 Download.jpg" },
+  { phase: "Fase 2", title: "Avengers: Age of Ultron", type: "movie", icon: "🤖", poster: "img/Avengers_ Age Of Ultron (2015).jpg" },
+  { phase: "Fase 2", title: "Ant-Man", type: "movie", icon: "🐜", poster: "img/Ant-Man (2015).jpg" },
+
+  { phase: "Fase 3", title: "Captain America: Civil War", type: "movie", icon: "🛡️", poster: "img/Captain America_ Civil War.jpg" },
+  { phase: "Fase 3", title: "Doctor Strange", type: "movie", icon: "🔮", poster: "img/trasferimento (12).jpg" },
+  { phase: "Fase 3", title: "Guardiani della Galassia Vol. 2", type: "movie", icon: "🚀", poster: "img/trasferimento (13).jpg" },
+  { phase: "Fase 3", title: "Spider-Man: Homecoming", type: "movie", icon: "🕷️", poster: "img/_Spider-man_ homecoming_ (2017)_.jpg" },
+  { phase: "Fase 3", title: "Thor: Ragnarok", type: "movie", icon: "🔨", poster: "img/trasferimento (14).jpg" },
+  { phase: "Fase 3", title: "Black Panther", type: "movie", icon: "🐾", poster: "img/Black Panther.jpg" },
+  { phase: "Fase 3", title: "Avengers: Infinity War", type: "movie", icon: "💎", poster: "img/trasferimento (15).jpg" },
+  { phase: "Fase 3", title: "Ant-Man and the Wasp", type: "movie", icon: "🐜", poster: "img/Ant Man And The Wasp Poster.jpg" },
+  { phase: "Fase 3", title: "Captain Marvel", type: "movie", icon: "✨", poster: "img/trasferimento (16).jpg" },
+  { phase: "Fase 3", title: "Avengers: Endgame", type: "movie", icon: "⏳", poster: "img/trasferimento (17).jpg" },
+  { phase: "Fase 3", title: "Spider-Man: Far From Home", type: "movie", icon: "🕷️", poster: "img/trasferimento (18).jpg" },
+
+  { phase: "Fase 4", title: "WandaVision", type: "series", icon: "📺", poster: "img/wandavision poster.jpg" },
+  { phase: "Fase 4", title: "The Falcon and the Winter Soldier", type: "series", icon: "🦅", poster: "img/9851692928358540.jpg" },
+  { phase: "Fase 4", title: "Loki (Stagione 1)", type: "series", icon: "🐍", poster: "img/Disney_Marvel Loki TV Poster.jpg" },
+  { phase: "Fase 4", title: "Black Widow", type: "movie", icon: "🕷️", poster: "img/Black Widow (2021).jpg" },
+  { phase: "Fase 4", title: "What If...? (Stagione 1)", type: "series", icon: "❓", poster: "img/7 Fan Theories About The MCU That Will Make You Go ‘What If…_’.jpg" },
+  { phase: "Fase 4", title: "Shang-Chi e la leggenda dei Dieci Anelli", type: "movie", icon: "💍", poster: "img/Shang-Chi and the Legend of the Ten Rings Movie Poster.jpg" },
+  { phase: "Fase 4", title: "Eternals", type: "movie", icon: "🌠", poster: "img/Eternals.jpg" },
+  { phase: "Fase 4", title: "Hawkeye", type: "series", icon: "🏹", poster: "img/11962755254587060.jpg" },
+  { phase: "Fase 4", title: "Spider-Man: No Way Home", type: "movie", icon: "🕷️", poster: "img/SPIDER-MAN_ NO WAY HOME (2021).jpg" },
+  { phase: "Fase 4", title: "Moon Knight", type: "series", icon: "🌙", poster: "img/Moon Knight Finale Movie Film Poster.jpg" },
+  { phase: "Fase 4", title: "Doctor Strange nel Multiverso della Follia", type: "movie", icon: "🔮", poster: "img/Doctor Strange en el multiverso de la locura….jpg" },
+  { phase: "Fase 4", title: "Ms. Marvel", type: "series", icon: "✨", poster: "img/151503974963596266.jpg" },
+  { phase: "Fase 4", title: "Thor: Love and Thunder", type: "movie", icon: "🔨", poster: "img/Thor - Love and Thunder (2022).jpg" },
+  { phase: "Fase 4", title: "She-Hulk: Attorney at Law", type: "series", icon: "💚", poster: "img/SHE-HULK.jpg" },
+  { phase: "Fase 4", title: "Black Panther: Wakanda Forever", type: "movie", icon: "🐾", poster: "img/Black Panther Wakanda Forever.jpg" },
+  { phase: "Fase 4", title: "Guardiani della Galassia: Le Feste Olografiche", type: "movie", icon: "🎄", poster: "img/The Guardians Of The Galaxy Holiday Special.jpg" },
+
+  { phase: "Fase 5", title: "Ant-Man and the Wasp: Quantumania", type: "movie", icon: "🐜", poster: "img/antmanand.jpg" },
+  { phase: "Fase 5", title: "Secret Invasion", type: "series", icon: "👽", poster: "img/SECRET INVASION.jpg" },
+  { phase: "Fase 5", title: "Guardiani della Galassia Vol. 3", type: "movie", icon: "🚀", poster: "img/Guardians of the Galaxy Vol_ 3 (2023).jpg" },
+  { phase: "Fase 5", title: "Loki (Stagione 2)", type: "series", icon: "🐍", poster: "img/Loki - Season 2.jpg" },
+  { phase: "Fase 5", title: "The Marvels", type: "movie", icon: "✨", poster: "img/844493674552675.jpg" },
+  { phase: "Fase 5", title: "Echo", type: "series", icon: "🎯", poster: "img/13510867625695195.jpg" },
+  { phase: "Fase 5", title: "Agatha All Along", type: "series", icon: "🔮", poster: "img/53972895530417348.jpg" },
+  { phase: "Fase 5", title: "Daredevil: Born Again", type: "series", icon: "😈", poster: "img/daredevil.jpg" },
+  { phase: "Fase 5", title: "Captain America: Brave New World", type: "movie", icon: "🛡️", poster: "img/Captain America_ Brave New World.jpg" },
+  { phase: "Fase 5", title: "Thunderbolts*", type: "movie", icon: "⚡", poster: "img/thunderbolts poster.jpg" },
+  { phase: "Fase 5", title: "The Fantastic Four: First Steps", type: "movie", icon: "🔢", poster: "img/8373949303843711.jpg" },
+
+  { phase: "Fase 6", title: "Spider-Man: Brand New Day", type: "movie", icon: "🕷️", poster: "img/Spider-Man Brand New Day poster.jpg" },
+
+  { phase: "Universo Sony (Tobey Maguire)", title: "Spider-Man", type: "movie", icon: "🕸️", poster: "img/spiderman1.jpg" },
+  { phase: "Universo Sony (Tobey Maguire)", title: "Spider-Man 2", type: "movie", icon: "🕸️", poster: "img/spiderman2.jpg" },
+  { phase: "Universo Sony (Tobey Maguire)", title: "Spider-Man 3", type: "movie", icon: "🕸️", poster: "img/spiderman3.jpg" },
+
+  { phase: "Universo Sony (Andrew Garfield)", title: "The Amazing Spider-Man", type: "movie", icon: "🕸️", poster: "img/The Amazing Spider-Man.jpg" },
+  { phase: "Universo Sony (Andrew Garfield)", title: "The Amazing Spider-Man 2: Il potere di Electro", type: "movie", icon: "🕸️", poster: "img/theamazingspiderman2.jpg" },
+
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "X-Men", type: "movie", icon: "🧬", poster: "img/xmen.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "X2 - X-Men United", type: "movie", icon: "🧬", poster: "img/xmen 2.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "X-Men - Conflitto finale", type: "movie", icon: "🧬", poster: "img/xmen3.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "X-Men le origini - Wolverine", type: "movie", icon: "🗡️",poster:"img/xmenorigins.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "X-Men - L'inizio", type: "movie", icon: "🧬", poster: "img/inizio.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "Wolverine - L'immortale", type: "movie", icon: "🗡️", poster: "img/wolverineimmortale.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "X-Men - Giorni di un futuro passato", type: "movie", icon: "🧬", poster: "img/days.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "Deadpool", type: "movie", icon: "💥", poster: "img/Deadpool (2016).jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "X-Men - Apocalisse", type: "movie", icon: "🧬", poster: "img/x-men apocalypse.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "Logan - The Wolverine", type: "movie", icon: "🗡️", poster: "img/logan.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "Deadpool 2", type: "movie", icon: "💥", poster: "img/DEADPOOL 2 (2018).jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "X-Men - Dark Phoenix", type: "movie", icon: "🧬", poster: "img/xmen dark phoenix.jpg" },
+  { phase: "Universo Fox (X-Men & Deadpool)", title: "The New Mutants", type: "movie", icon: "🧬", poster: "img/the new mutants.jpg" },
+
+  { phase: "Marvel Netflix", title: "The Punisher (Stagione 1)", type: "series", icon: "💀", poster: "img/the punisher.jpg" },
+  { phase: "Marvel Netflix", title: "The Punisher (Stagione 2)", type: "series", icon: "💀", poster: "img/the punisher season2.jpg" }
+];
+
+// Ordine cronologico (in base alla timeline interna dell'universo narrativo)
+const chronologicalOrder = [
+  "Captain America - Il primo Vendicatore",
+  "Captain Marvel",
+  "Iron Man",
+  "Iron Man 2",
+  "L'incredibile Hulk",
+  "Thor",
+  "The Avengers",
+  "Thor: The Dark World",
+  "Iron Man 3",
+  "Captain America: Winter Soldier",
+  "Guardiani della Galassia",
+  "Guardiani della Galassia Vol. 2",
+  "Avengers: Age of Ultron",
+  "Ant-Man",
+  "Captain America: Civil War",
+  "Black Widow",
+  "Black Panther",
+  "Spider-Man: Homecoming",
+  "Doctor Strange",
+  "Thor: Ragnarok",
+  "Avengers: Infinity War",
+  "Ant-Man and the Wasp",
+  "Avengers: Endgame",
+  "Spider-Man: Far From Home",
+  "WandaVision",
+  "The Falcon and the Winter Soldier",
+  "Loki (Stagione 1)",
+  "What If...? (Stagione 1)",
+  "Shang-Chi e la leggenda dei Dieci Anelli",
+  "Eternals",
+  "Hawkeye",
+  "Spider-Man: No Way Home",
+  "Moon Knight",
+  "Ms. Marvel",
+  "Doctor Strange nel Multiverso della Follia",
+  "Thor: Love and Thunder",
+  "She-Hulk: Attorney at Law",
+  "Black Panther: Wakanda Forever",
+  "Guardiani della Galassia: Le Feste Olografiche",
+  "Ant-Man and the Wasp: Quantumania",
+  "Secret Invasion",
+  "Guardiani della Galassia Vol. 3",
+  "Loki (Stagione 2)",
+  "Deadpool & Wolverine",
+  "The Marvels",
+  "Echo",
+  "Agatha All Along",
+  "Daredevil: Born Again",
+  "Captain America: Brave New World",
+  "Thunderbolts*",
+  "The Fantastic Four: First Steps",
+  "Spider-Man: Brand New Day"
+];
+
+const STORAGE_KEY = "mcu_tracker_progress";
+const RATINGS_KEY = "mcu_tracker_ratings";
+const NOTES_KEY = "mcu_tracker_notes";
+const VISITS_KEY = "mcu_tracker_visits";
+const GUIDE_SEEN_KEY = "mcu_tracker_guide_seen";
+
+let progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+let ratings = JSON.parse(localStorage.getItem(RATINGS_KEY) || "{}");
+let notes = JSON.parse(localStorage.getItem(NOTES_KEY) || "{}");
+let currentFilter = "all";
+let searchQuery = "";
+let viewMode = "release"; // "release" oppure "chrono"
+let currentSaga = "all"; // "all" | "Infinity Saga" | "Multiverse Saga"
+let currentFranchise = "all";
+
+// Durata approssimativa in minuti (film: durata singola; serie: intera stagione)
+const runtimes = {
+  "Iron Man": 126, "L'incredibile Hulk": 112, "Iron Man 2": 124, "Thor": 115,
+  "Captain America - Il primo Vendicatore": 124, "The Avengers": 143,
+  "Iron Man 3": 130, "Thor: The Dark World": 112, "Captain America: Winter Soldier": 136,
+  "Guardiani della Galassia": 121, "Avengers: Age of Ultron": 141, "Ant-Man": 117,
+  "Captain America: Civil War": 147, "Doctor Strange": 115, "Guardiani della Galassia Vol. 2": 136,
+  "Spider-Man: Homecoming": 133, "Thor: Ragnarok": 130, "Black Panther": 134,
+  "Avengers: Infinity War": 149, "Ant-Man and the Wasp": 118, "Captain Marvel": 123,
+  "Avengers: Endgame": 181, "Spider-Man: Far From Home": 129,
+  "WandaVision": 270, "The Falcon and the Winter Soldier": 290, "Loki (Stagione 1)": 290,
+  "Black Widow": 134, "What If...? (Stagione 1)": 190, "Shang-Chi e la leggenda dei Dieci Anelli": 132,
+  "Eternals": 156, "Hawkeye": 290, "Spider-Man: No Way Home": 148, "Moon Knight": 290,
+  "Doctor Strange nel Multiverso della Follia": 126, "Ms. Marvel": 240, "Thor: Love and Thunder": 119,
+  "She-Hulk: Attorney at Law": 270, "Black Panther: Wakanda Forever": 161,
+  "Guardiani della Galassia: Le Feste Olografiche": 44,
+  "Ant-Man and the Wasp: Quantumania": 125, "Secret Invasion": 240, "Guardiani della Galassia Vol. 3": 150,
+  "Loki (Stagione 2)": 290, "The Marvels": 105, "Echo": 240, "Agatha All Along": 280,
+  "Daredevil: Born Again": 400, "Captain America: Brave New World": 118, "Thunderbolts*": 127,
+  "The Fantastic Four: First Steps": 115, "Spider-Man: Brand New Day": 130,
+  "Deadpool & Wolverine": 128,
+  "Spider-Man": 121, "Spider-Man 2": 127, "Spider-Man 3": 139,
+  "The Amazing Spider-Man": 136, "The Amazing Spider-Man 2: Il potere di Electro": 142,
+  "X-Men": 104, "X2 - X-Men United": 133, "X-Men - Conflitto finale": 104,
+  "X-Men le origini - Wolverine": 107, "X-Men - L'inizio": 132, "Wolverine - L'immortale": 126,
+  "X-Men - Giorni di un futuro passato": 132, "Deadpool": 108, "X-Men - Apocalisse": 144,
+  "Logan - The Wolverine": 137, "Deadpool 2": 119, "X-Men - Dark Phoenix": 114,
+  "The New Mutants": 94,
+  "The Punisher (Stagione 1)": 650, "The Punisher (Stagione 2)": 590
+};
+
+// Saga: derivata dalla fase (Fase 1-3 = Infinity Saga, Fase 4-6 = Multiverse Saga)
+function sagaOf(phase) {
+  if (!phase.startsWith("Fase")) return "Fuori MCU";
+  const n = parseInt(phase.replace(/\D/g, ""), 10);
+  return n <= 3 ? "Infinity Saga" : "Multiverse Saga";
+}
+
+// Personaggio / franchise principale di ogni titolo
+const franchiseOf = {
+  "Iron Man": "Iron Man", "Iron Man 2": "Iron Man", "Iron Man 3": "Iron Man",
+  "L'incredibile Hulk": "Hulk",
+  "Thor": "Thor", "Thor: The Dark World": "Thor", "Thor: Ragnarok": "Thor", "Thor: Love and Thunder": "Thor",
+  "Captain America - Il primo Vendicatore": "Captain America", "Captain America: Winter Soldier": "Captain America",
+  "Captain America: Civil War": "Captain America", "Captain America: Brave New World": "Captain America",
+  "The Avengers": "Avengers", "Avengers: Age of Ultron": "Avengers", "Avengers: Infinity War": "Avengers", "Avengers: Endgame": "Avengers",
+  "Guardiani della Galassia": "Guardiani della Galassia", "Guardiani della Galassia Vol. 2": "Guardiani della Galassia",
+  "Guardiani della Galassia Vol. 3": "Guardiani della Galassia", "Guardiani della Galassia: Le Feste Olografiche": "Guardiani della Galassia",
+  "Ant-Man": "Ant-Man", "Ant-Man and the Wasp": "Ant-Man", "Ant-Man and the Wasp: Quantumania": "Ant-Man",
+  "Doctor Strange": "Doctor Strange", "Doctor Strange nel Multiverso della Follia": "Doctor Strange",
+  "Spider-Man: Homecoming": "Spider-Man", "Spider-Man: Far From Home": "Spider-Man",
+  "Spider-Man: No Way Home": "Spider-Man", "Spider-Man: Brand New Day": "Spider-Man",
+  "Deadpool & Wolverine": "Deadpool",
+  "Spider-Man": "Spider-Man", "Spider-Man 2": "Spider-Man", "Spider-Man 3": "Spider-Man",
+  "The Amazing Spider-Man": "Spider-Man", "The Amazing Spider-Man 2: Il potere di Electro": "Spider-Man",
+  "X-Men": "X-Men", "X2 - X-Men United": "X-Men", "X-Men - Conflitto finale": "X-Men",
+  "X-Men le origini - Wolverine": "Wolverine", "X-Men - L'inizio": "X-Men", "Wolverine - L'immortale": "Wolverine",
+  "X-Men - Giorni di un futuro passato": "X-Men", "Deadpool": "Deadpool", "X-Men - Apocalisse": "X-Men",
+  "Logan - The Wolverine": "Wolverine", "Deadpool 2": "Deadpool", "X-Men - Dark Phoenix": "X-Men",
+  "The New Mutants": "X-Men",
+  "The Punisher (Stagione 1)": "The Punisher", "The Punisher (Stagione 2)": "The Punisher",
+  "Black Panther": "Black Panther", "Black Panther: Wakanda Forever": "Black Panther",
+  "Captain Marvel": "Captain Marvel", "The Marvels": "Captain Marvel",
+  "Black Widow": "Black Widow",
+  "Shang-Chi e la leggenda dei Dieci Anelli": "Shang-Chi",
+  "Eternals": "Eternals",
+  "WandaVision": "Wanda / Agatha", "Agatha All Along": "Wanda / Agatha",
+  "The Falcon and the Winter Soldier": "Falcon & Winter Soldier",
+  "Loki (Stagione 1)": "Loki", "Loki (Stagione 2)": "Loki",
+  "What If...? (Stagione 1)": "What If...?",
+  "Hawkeye": "Hawkeye",
+  "Moon Knight": "Moon Knight",
+  "Ms. Marvel": "Ms. Marvel",
+  "She-Hulk: Attorney at Law": "She-Hulk",
+  "Secret Invasion": "Nick Fury / Secret Invasion",
+  "Echo": "Echo",
+  "Daredevil: Born Again": "Daredevil",
+  "Thunderbolts*": "Thunderbolts",
+  "The Fantastic Four: First Steps": "Fantastic Four"
+};
+const descriptions = {
+  "Iron Man": "Il miliardario Tony Stark viene rapito e costruisce una prima armatura per fuggire, per poi diventare il supereroe corazzato Iron Man.",
+  "L'incredibile Hulk": "Bruce Banner fugge dalle autorità cercando una cura alla mutazione che lo trasforma nel violento Hulk quando è arrabbiato.",
+  "Iron Man 2": "Tony Stark deve fare i conti con l'avvelenamento causato dal suo stesso reattore e con un nuovo nemico armato di frusta elettrica.",
+  "Thor": "Il dio del tuono viene esiliato sulla Terra senza i suoi poteri e deve imparare l'umiltà per riconquistarli e salvare Asgard.",
+  "Captain America - Il primo Vendicatore": "Durante la Seconda Guerra Mondiale, il gracile Steve Rogers diventa il super soldato Captain America per fermare Hydra.",
+  "The Avengers": "Nick Fury riunisce Iron Man, Thor, Captain America, Hulk, Vedova Nera ed Occhio di Falco per fermare Loki e l'invasione Chitauri.",
+  "Iron Man 3": "Dopo lo shock dell'invasione di New York, Tony Stark affronta il terrorista Mandarino mentre la sua armatura viene distrutta.",
+  "Thor: The Dark World": "Thor deve proteggere l'universo dagli Elfi Oscuri di Malekith, decisi a riportare il cosmo nell'oscurità primordiale.",
+  "Captain America: Winter Soldier": "Cap scopre che Hydra si è infiltrata in SHIELD e affronta un misterioso assassino noto come Soldato d'Inverno.",
+  "Guardiani della Galassia": "Un gruppo di disadattati spaziali si allea per impedire al fanatico Ronan di impossessarsi di un potente artefatto.",
+  "Avengers: Age of Ultron": "Tony Stark crea l'IA Ultron per proteggere il mondo, ma questa si ribella con l'obiettivo di causare l'estinzione umana.",
+  "Ant-Man": "L'ex ladro Scott Lang eredita la tecnologia che gli permette di rimpicciolirsi per compiere un'audace rapina come Ant-Man.",
+  "Captain America: Civil War": "Un incidente causato dagli Avengers porta a una regolamentazione governativa che spacca il gruppo in due fazioni rivali.",
+  "Doctor Strange": "Il chirurgo Stephen Strange, dopo un incidente che gli distrugge le mani, scopre la magia e diventa lo Stregone Supremo.",
+  "Guardiani della Galassia Vol. 2": "I Guardiani scoprono il misterioso padre di Peter Quill mentre affrontano nuove minacce e tensioni interne al gruppo.",
+  "Spider-Man: Homecoming": "Il giovane Peter Parker cerca di conciliare la vita scolastica con il ruolo di Spider-Man sotto la guida di Tony Stark.",
+  "Thor: Ragnarok": "Thor viene imprigionato su un pianeta alieno e deve tornare in tempo per impedire la profetizzata distruzione di Asgard.",
+  "Black Panther": "T'Challa torna in Wakanda per diventare re, ma deve affrontare una minaccia che rischia di rivelare il paese al mondo.",
+  "Avengers: Infinity War": "Thanos dà la caccia alle sei Gemme dell'Infinito e gli Avengers si uniscono per fermare la sua folle missione.",
+  "Ant-Man and the Wasp": "Scott Lang collabora con Hope van Dyne, la Vespa, per una missione nel Regno Quantico e salvare sua madre.",
+  "Captain Marvel": "Carol Danvers scopre di avere superpoteri e la sua vera identità mentre è coinvolta in una guerra galattica tra Kree e Skrull.",
+  "Avengers: Endgame": "Dopo lo schiocco di Thanos, gli Avengers superstiti tentano un disperato piano per annullare la devastazione e ripristinare l'universo.",
+  "Spider-Man: Far From Home": "In gita scolastica in Europa, Peter Parker viene coinvolto da Nick Fury nella lotta contro le creature elementali.",
+  "WandaVision": "Wanda Maximoff e Visione vivono un'idilliaca vita da sitcom in una realtà alterata a Westview, con segreti nascosti dietro l'apparenza.",
+  "The Falcon and the Winter Soldier": "Sam Wilson e Bucky Barnes indagano su un gruppo estremista mentre fanno i conti con l'eredità dello scudo di Captain America.",
+  "Loki (Stagione 1)": "Dopo aver rubato il Tesseract, Loki viene catturato dalla TVA e costretto a collaborare per riparare la Sacra Linea Temporale.",
+  "Black Widow": "Prima degli eventi di Civil War, Natasha Romanoff affronta il suo passato da spia russa e la famiglia che ha lasciato.",
+  "What If...? (Stagione 1)": "Un'antologia animata che esplora eventi alternativi dell'universo Marvel, guidata dal misterioso Osservatore.",
+  "Shang-Chi e la leggenda dei Dieci Anelli": "Shang-Chi deve affrontare il suo passato e suo padre, il leader della potente organizzazione dei Dieci Anelli.",
+  "Eternals": "Un gruppo di esseri immortali creati dai Celestiali esce dall'ombra per proteggere la Terra da un'antica minaccia.",
+  "Hawkeye": "Clint Barton addestra la giovane arciera Kate Bishop mentre cerca di tornare a casa per Natale, braccato dalla criminalità di New York.",
+  "Spider-Man: No Way Home": "Peter Parker chiede aiuto a Doctor Strange per far dimenticare la sua identità al mondo, aprendo varchi nel multiverso.",
+  "Moon Knight": "Il fragile Steven Grant scopre di condividere il corpo con il mercenario Marc Spector, entrambi legati al dio egizio Khonshu.",
+  "Doctor Strange nel Multiverso della Follia": "Strange viaggia nel multiverso per proteggere una giovane con poteri unici, scontrandosi con pericoli inaspettati.",
+  "Ms. Marvel": "L'adolescente Kamala Khan scopre di avere poteri cosmici e diventa la supereroina Ms. Marvel, sua idola di sempre.",
+  "Thor: Love and Thunder": "Thor si allea con Valchiria, Korg e la sua ex Jane Foster, divenuta la Potente Thor, per fermare Gorr il Macellatore di Dei.",
+  "She-Hulk: Attorney at Law": "L'avvocatessa Jennifer Walters diventa She-Hulk e deve bilanciare carriera legale e nuova vita da supereroina verde.",
+  "Black Panther: Wakanda Forever": "Dopo la morte di T'Challa, Wakanda deve difendersi da una nuova potenza sottomarina mentre elabora il lutto.",
+  "Guardiani della Galassia: Le Feste Olografiche": "I Guardiani organizzano un regalo di Natale speciale per Peter Quill sulla Terra, tra caos e buoni sentimenti.",
+  "Ant-Man and the Wasp: Quantumania": "Scott Lang e famiglia restano intrappolati nel Regno Quantico, dove affrontano il temibile conquistatore Kang.",
+  "Secret Invasion": "Nick Fury scopre un'infiltrazione Skrull di lunga data sulla Terra e deve fermare una fazione ribelle prima che sia troppo tardi.",
+  "Guardiani della Galassia Vol. 3": "I Guardiani intraprendono una pericolosa missione per salvare Rocket, confrontandosi con il suo doloroso passato.",
+  "Loki (Stagione 2)": "Loki affronta il collasso della Sacra Linea Temporale, cercando di salvare la TVA e i suoi amici attraverso il tempo.",
+  "The Marvels": "Carol Danvers, Kamala Khan e Monica Rambeau uniscono le forze dopo che i loro poteri iniziano a scambiarsi in modo casuale.",
+  "Echo": "Maya Lopez torna nella sua città natale per fare i conti col passato familiare e criminale, mentre affina le sue abilità.",
+  "Agatha All Along": "La strega Agatha Harkness riunisce un gruppo di outsider per percorrere la Strada delle Streghe e riconquistare i suoi poteri.",
+  "Daredevil: Born Again": "Matt Murdock riprende il doppio ruolo di avvocato e vigilante mascherato a New York, scontrandosi di nuovo con Kingpin.",
+  "Captain America: Brave New World": "Sam Wilson, il nuovo Captain America, affronta una crisi internazionale legata al misterioso metallo adamantio.",
+  "Thunderbolts*": "Un gruppo di antieroi ed ex agenti governativi viene riunito in una missione ad alto rischio che li trasformerà in una nuova squadra.",
+  "The Fantastic Four: First Steps": "In un mondo retro-futuristico, la famiglia Richards deve proteggere la Terra da una minaccia cosmica che affama i pianeti.",
+  "Spider-Man: Brand New Day": "Un nuovo capitolo per Peter Parker, alle prese con una vita rimasta cambiata dagli eventi di No Way Home.",
+  "Deadpool & Wolverine": "Wade Wilson viene reclutato dalla TVA e costringe un riluttante Logan a unirsi a lui in un'avventura multiversale irriverente.",
+  "Spider-Man": "Peter Parker viene morso da un ragno geneticamente modificato e usa i nuovi poteri per affrontare il Goblin.",
+  "Spider-Man 2": "Peter Parker fatica a bilanciare vita privata e dovere da eroe mentre affronta lo scienziato Octavius, divenuto Doc Ock.",
+  "Spider-Man 3": "Un simbionte alieno oscura il comportamento di Peter Parker, mentre affronta Sandman e un nuovo rivale, Harry Osborn.",
+  "The Amazing Spider-Man": "Peter Parker indaga sulla scomparsa di suo padre e ottiene poteri da ragno, affrontando il Dr. Connors trasformato in Lizard.",
+  "The Amazing Spider-Man 2: Il potere di Electro": "Spider-Man affronta il pericoloso Electro mentre cerca di proteggere chi ama e scoprire la verità sui suoi genitori.",
+  "X-Men": "I mutanti Wolverine e Rogue si uniscono al gruppo di Professor X per fermare il piano del malvagio Magneto.",
+  "X2 - X-Men United": "Gli X-Men si alleano temporaneamente con Magneto per fermare un attacco governativo contro i mutanti.",
+  "X-Men - Conflitto finale": "La scoperta di una cura per il gene mutante divide profondamente la comunità degli X-Men.",
+  "X-Men le origini - Wolverine": "Un capitolo dedicato al passato di Logan, dal suo addestramento militare fino a diventare Wolverine.",
+  "X-Men - L'inizio": "Charles Xavier ed Erik Lehnsherr, futuri Professor X e Magneto, si conoscono durante la Crisi dei missili di Cuba.",
+  "Wolverine - L'immortale": "Logan viaggia in Giappone dove la sua invulnerabilità viene messa a rischio, costringendolo ad affrontare i suoi limiti.",
+  "X-Men - Giorni di un futuro passato": "Wolverine viaggia nel passato per impedire un evento che porterà a un futuro apocalittico per i mutanti.",
+  "Deadpool": "Il mercenario Wade Wilson, sfigurato da un esperimento, diventa l'antieroe sarcastico Deadpool per vendicarsi.",
+  "X-Men - Apocalisse": "Il primo mutante della storia, risvegliato dopo millenni, minaccia di distruggere la civiltà moderna.",
+  "Logan - The Wolverine": "In un futuro cupo, un Logan invecchiato protegge una giovane mutante dalle forze che la danno la caccia.",
+  "Deadpool 2": "Deadpool forma una squadra di mutanti per proteggere un ragazzo minacciato dal viaggiatore del tempo Cable.",
+  "X-Men - Dark Phoenix": "Jean Grey viene sopraffatta da una forza cosmica che ne amplifica i poteri, mettendo a rischio chi le sta vicino.",
+  "The New Mutants": "Un gruppo di giovani mutanti scopre i propri poteri in una struttura isolata, mentre lotta contro incubi che prendono vita.",
+  "The Punisher (Stagione 1)": "Frank Castle, ex marine devastato dalla perdita della famiglia, dà la caccia ai responsabili come vigilante senza pietà.",
+  "The Punisher (Stagione 2)": "Frank Castle continua la sua guerra personale contro il crimine, affrontando nuove minacce e i fantasmi del suo passato."
+};
+
+function saveProgress() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  trackVisit();
+}
+
+function saveRatings() {
+  localStorage.setItem(RATINGS_KEY, JSON.stringify(ratings));
+}
+
+function saveNotes() {
+  localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+}
+
+function itemId(item) {
+  return item.phase + "::" + item.title;
+}
+
+// ---- Modale generico (guida e descrizioni) ----
+function openModal(html) {
+  document.getElementById("modalContent").innerHTML = html;
+  document.getElementById("modalOverlay").classList.add("show");
+}
+function closeModal() {
+  document.getElementById("modalOverlay").classList.remove("show");
+}
+document.getElementById("modalClose").addEventListener("click", closeModal);
+document.getElementById("modalOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "modalOverlay") closeModal();
+});
+
+// ---- Guida introduttiva ----
+function guideHtml() {
+  return `
+    <h2>👋 Benvenuto nel tuo MCU Tracker</h2>
+    <div class="modal-subtitle">Ecco come funziona il sito in pochi passaggi</div>
+    <div class="guide-step">
+      <div class="g-icon">✅</div>
+      <div><div class="g-title">Segna cosa hai visto</div>
+        <div class="g-text">Clicca su una locandina per segnarla come vista (si illumina di verde). Riclicca per togliere il segno.</div></div>
+    </div>
+    <div class="guide-step">
+      <div class="g-icon">📅 / 🕰️</div>
+      <div><div class="g-title">Cambia ordine</div>
+        <div class="g-text">In alto puoi passare dall'ordine di uscita (per fasi) all'ordine cronologico della storia.</div></div>
+    </div>
+    <div class="guide-step">
+      <div class="g-icon">🔍</div>
+      <div><div class="g-title">Filtra e cerca</div>
+        <div class="g-text">Usa i pulsanti Film/Serie/Da vedere o la barra di ricerca per trovare rapidamente un titolo.</div></div>
+    </div>
+    <div class="guide-step">
+      <div class="g-icon">ℹ️</div>
+      <div><div class="g-title">Leggi la trama</div>
+        <div class="g-text">Clicca l'icona "i" in alto a sinistra su ogni locandina per leggerne una breve descrizione.</div></div>
+    </div>
+    <div class="guide-step">
+      <div class="g-icon">⭐</div>
+      <div><div class="g-title">Vota e commenta</div>
+        <div class="g-text">Dai un voto da 1 a 5 stelle e aggiungi una nota personale a ogni titolo che hai visto.</div></div>
+    </div>
+    <div class="guide-step">
+      <div class="g-icon">📊</div>
+      <div><div class="g-title">Guarda le statistiche</div>
+        <div class="g-text">In alto trovi il tempo totale visto, il voto medio, il rapporto film/serie e i giorni di fila in cui hai usato il sito.</div></div>
+    </div>
+    <div class="guide-step">
+      <div class="g-icon">🎯</div>
+      <div><div class="g-title">Segui i consigli</div>
+        <div class="g-text">La card "Consigliato per te" ti suggerisce sempre il prossimo titolo da guardare.</div></div>
+    </div>
+  `;
+}
+
+document.getElementById("guideBtn").addEventListener("click", () => openModal(guideHtml()));
+
+if (!localStorage.getItem(GUIDE_SEEN_KEY)) {
+  openModal(guideHtml());
+  localStorage.setItem(GUIDE_SEEN_KEY, "1");
+}
+
+function openDescription(d) {
+  const html = `
+    ${d.poster ? `<img class="desc-poster" src="${d.poster}" alt="${d.title}">` : ""}
+    <h2>${d.title}</h2>
+    <span class="tag ${d.type} desc-tag">${d.type === "movie" ? "Film" : "Serie"}</span>
+    <div class="modal-subtitle">${d.phase} · circa ${Math.floor((runtimes[d.title] || 0) / 60)}h ${(runtimes[d.title] || 0) % 60}m</div>
+    <div class="desc-text">${descriptions[d.title] || "Descrizione non disponibile."}</div>
+  `;
+  openModal(html);
+}
+
+// ---- Streak visite (giorni consecutivi di utilizzo) ----
+function trackVisit() {
+  const today = new Date().toISOString().slice(0, 10);
+  const visits = JSON.parse(localStorage.getItem(VISITS_KEY) || "[]");
+  if (!visits.includes(today)) {
+    visits.push(today);
+    localStorage.setItem(VISITS_KEY, JSON.stringify(visits));
+  }
+}
+
+function getStreak() {
+  const visits = JSON.parse(localStorage.getItem(VISITS_KEY) || "[]").sort();
+  if (visits.length === 0) return 0;
+  let streak = 1;
+  let day = new Date(visits[visits.length - 1]);
+  for (let i = visits.length - 2; i >= 0; i--) {
+    const prev = new Date(visits[i]);
+    const diffDays = Math.round((day - prev) / 86400000);
+    if (diffDays === 1) { streak++; day = prev; }
+    else if (diffDays === 0) { continue; }
+    else break;
+  }
+  return streak;
+}
+
+function renderPhaseStats() {
+  const wrap = document.getElementById("phaseStats");
+  wrap.innerHTML = "";
+  const phases = [...new Set(data.map(d => d.phase))];
+
+  phases.forEach(phase => {
+    const items = data.filter(d => d.phase === phase);
+    const done = items.filter(d => progress[itemId(d)]).length;
+    const pct = Math.round((done / items.length) * 100);
+    const meta = phaseMeta[phase] || { icon: "🎬", color: "#e62429" };
+
+    const card = document.createElement("div");
+    card.className = "phase-stat-card";
+    card.innerHTML = `
+      <div class="phase-stat-top">
+        <span><span class="icon">${meta.icon}</span> ${phase}</span>
+        <span>${done}/${items.length}</span>
+      </div>
+      <div class="phase-mini-bar-bg">
+        <div class="phase-mini-bar-fill" style="width:${pct}%; background:${meta.color};"></div>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+function render() {
+  const main = document.getElementById("mainList");
+  main.innerHTML = "";
+
+  if (viewMode === "chrono") {
+    renderChrono(main);
+  } else {
+    renderByPhase(main);
+  }
+
+  updateStats();
+}
+
+function passesFilters(d) {
+  const id = itemId(d);
+  const isDone = !!progress[id];
+  if (currentFilter === "movie" && d.type !== "movie") return false;
+  if (currentFilter === "series" && d.type !== "series") return false;
+  if (currentFilter === "unwatched" && isDone) return false;
+  if (currentSaga !== "all" && sagaOf(d.phase) !== currentSaga) return false;
+  if (currentFranchise !== "all" && (franchiseOf[d.title] || "") !== currentFranchise) return false;
+  if (searchQuery && !d.title.toLowerCase().includes(searchQuery)) return false;
+  return true;
+}
+
+function createItemEl(d, meta) {
+  const id = itemId(d);
+  const isDone = !!progress[id];
+  const myRating = ratings[id] || 0;
+
+  const el = document.createElement("div");
+  el.className = "item" + (isDone ? " checked" : "");
+  el.style.background = `linear-gradient(160deg, ${meta.color}33, #101014)`;
+
+  let starsHtml = "";
+  for (let i = 1; i <= 5; i++) {
+    starsHtml += `<span class="star ${i <= myRating ? "filled" : ""}" data-star="${i}">★</span>`;
+  }
+
+  el.innerHTML = `
+    <div class="info-btn">i</div>
+    <div class="check-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <div class="poster-bg" ${d.poster ? `style="background-image:url('${d.poster}'); background-size:cover; background-position:center; font-size:0;"` : ""}>${d.poster ? "" : (d.icon || "🎬")}</div>
+    <div class="poster-overlay">
+      <div class="item-title">${d.title}</div>
+      <div class="item-meta">
+        <span class="tag ${d.type}">${d.type === "movie" ? "Film" : "Serie"}</span>
+      </div>
+      <div class="stars">${starsHtml}<span class="note-btn" data-note="1">${notes[id] ? "📝" : "+ nota"}</span></div>
+    </div>
+  `;
+
+  el.addEventListener("click", () => {
+    progress[id] = !progress[id];
+    saveProgress();
+    render();
+    renderPhaseStats();
+  });
+
+  el.querySelector(".info-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    openDescription(d);
+  });
+
+  el.querySelectorAll(".star").forEach(starEl => {
+    starEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const val = parseInt(starEl.dataset.star, 10);
+      ratings[id] = (ratings[id] === val) ? 0 : val; // ri-click per azzerare
+      saveRatings();
+      render();
+    });
+  });
+
+  el.querySelector(".note-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const current = notes[id] || "";
+    const text = prompt(`La tua nota su "${d.title}":`, current);
+    if (text !== null) {
+      if (text.trim() === "") delete notes[id];
+      else notes[id] = text.trim();
+      saveNotes();
+      render();
+    }
+  });
+
+  return el;
+}
+
+function renderByPhase(main) {
+  const phases = [...new Set(data.map(d => d.phase))];
+
+  phases.forEach(phase => {
+    const items = data.filter(d => d.phase === phase).filter(passesFilters);
+    if (items.length === 0) return;
+
+    const meta = phaseMeta[phase] || { icon: "🎬", color: "#e62429" };
+
+    const block = document.createElement("div");
+    block.className = "phase-block";
+
+    const title = document.createElement("div");
+    title.className = "phase-title";
+    title.innerHTML = `<span class="icon">${meta.icon}</span> ${phase}`;
+    block.appendChild(title);
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+
+    items.forEach(d => grid.appendChild(createItemEl(d, meta)));
+
+    block.appendChild(grid);
+    main.appendChild(block);
+  });
+}
+
+function renderChrono(main) {
+  const ordered = chronologicalOrder
+    .map(t => data.find(d => d.title === t))
+    .filter(Boolean)
+    .filter(passesFilters);
+
+  if (ordered.length === 0) return;
+
+  const block = document.createElement("div");
+  block.className = "phase-block";
+
+  const title = document.createElement("div");
+  title.className = "phase-title";
+  title.innerHTML = `<span class="icon">🕰️</span> Ordine cronologico (timeline narrativa)`;
+  block.appendChild(title);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+
+  ordered.forEach(d => {
+    const meta = phaseMeta[d.phase] || { icon: "🎬", color: "#e62429" };
+    grid.appendChild(createItemEl(d, meta));
+  });
+
+  block.appendChild(grid);
+  main.appendChild(block);
+}
+
+function updateStats() {
+  const total = data.length;
+  const done = data.filter(d => progress[itemId(d)]).length;
+  document.getElementById("doneCount").textContent = done;
+  document.getElementById("totalCount").textContent = total;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById("percentText").textContent = pct + "%";
+  document.getElementById("barFill").style.width = pct + "%";
+
+  renderExtraStats();
+  renderRecommendation();
+}
+
+function renderExtraStats() {
+  const wrap = document.getElementById("extraStats");
+  const watched = data.filter(d => progress[itemId(d)]);
+
+  const totalMinutes = watched.reduce((sum, d) => sum + (runtimes[d.title] || 0), 0);
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+
+  const ratedIds = Object.keys(ratings).filter(id => ratings[id] > 0);
+  const avgRating = ratedIds.length
+    ? (ratedIds.reduce((sum, id) => sum + ratings[id], 0) / ratedIds.length).toFixed(1)
+    : "–";
+
+  const watchedMovies = watched.filter(d => d.type === "movie").length;
+  const watchedSeries = watched.filter(d => d.type === "series").length;
+
+  const streak = getStreak();
+
+  wrap.innerHTML = `
+    <div class="extra-stat-card"><div class="value">${hours}h ${mins}m</div><div class="label">Tempo visto</div></div>
+    <div class="extra-stat-card"><div class="value">${avgRating} ⭐</div><div class="label">Voto medio dato</div></div>
+    <div class="extra-stat-card"><div class="value">${watchedMovies} 🎬 / ${watchedSeries} 📺</div><div class="label">Film / Serie viste</div></div>
+    <div class="extra-stat-card"><div class="value">${streak} 🔥</div><div class="label">Giorni di fila</div></div>
+  `;
+}
+
+function renderRecommendation() {
+  const card = document.getElementById("recoCard");
+  const order = viewMode === "chrono"
+    ? chronologicalOrder.map(t => data.find(d => d.title === t)).filter(Boolean)
+    : data;
+
+  const next = order.find(d => !progress[itemId(d)]);
+
+  if (!next) {
+    card.classList.remove("show");
+    return;
+  }
+
+  // Se l'utente ha valutato bene film o serie, personalizza il sottotitolo
+  const ratedEntries = Object.entries(ratings).filter(([, v]) => v >= 4);
+  let sub = `Prossimo nella tua lista (${viewMode === "chrono" ? "ordine cronologico" : "ordine di uscita"}) — ${next.phase}`;
+  if (ratedEntries.length > 0) {
+    sub += ` · hai dato ${ratedEntries.length >= 4 ? "voti alti a diversi titoli" : "un voto alto a un titolo simile"}, questo dovrebbe piacerti`;
+  }
+
+  document.getElementById("recoIcon").textContent = next.icon || "🎬";
+  document.getElementById("recoTitle").textContent = next.title;
+  document.getElementById("recoSub").textContent = sub;
+  card.classList.add("show");
+}
+
+document.querySelectorAll("#orderToggle button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#orderToggle button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    viewMode = btn.dataset.order;
+    render();
+  });
+});
+
+// Popolo la select dei personaggi/franchise con le voci uniche, in ordine di prima apparizione
+(function populateFranchiseSelect() {
+  const select = document.getElementById("franchiseSelect");
+  const seen = new Set();
+  data.forEach(d => {
+    const f = franchiseOf[d.title];
+    if (f && !seen.has(f)) {
+      seen.add(f);
+      const opt = document.createElement("option");
+      opt.value = f;
+      opt.textContent = f;
+      select.appendChild(opt);
+    }
+  });
+})();
+
+document.querySelectorAll("#sagaToggle button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#sagaToggle button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentSaga = btn.dataset.saga;
+    render();
+  });
+});
+
+document.getElementById("franchiseSelect").addEventListener("change", (e) => {
+  currentFranchise = e.target.value;
+  render();
+});
+
+document.querySelectorAll(".filters button[data-filter]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filters button[data-filter]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.filter;
+    render();
+  });
+});
+
+document.getElementById("searchBox").addEventListener("input", (e) => {
+  searchQuery = e.target.value.toLowerCase();
+  render();
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("Sei sicuro di voler azzerare tutti i progressi?")) {
+    progress = {};
+    saveProgress();
+    render();
+    renderPhaseStats();
+  }
+});
+
+trackVisit();
+renderPhaseStats();
+render();
+</script>
+
+</body>
+</html>
